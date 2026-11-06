@@ -1,11 +1,18 @@
 # Tahap 1: laporan tersimpan di MySQL
 
+Dokumen ini menjelaskan cakupan historis implementasi V1. V2 autentikasi dan
+kepemilikan laporan sudah tersedia dan dijelaskan di
+[tahap-2-autentikasi.md](tahap-2-autentikasi.md). Rancangan database target
+yang telah difinalisasi tersedia di [ERD Foundly](erd.md). Tabel pada ERD target yang
+belum memiliki migrasi belum tersedia di MySQL.
+
 ## Batas tahap
 
-Membuat laporan, daftar/pencarian, dan detail. Belum ada update/delete, upload foto,
-registrasi/login, relasi pelapor, klaim, atau penyerahan. API masih untuk pengembangan
-lokal dan server terikat ke 127.0.0.1. Sebelum dipublikasikan, endpoint penulisan harus
-dilengkapi autentikasi dan otorisasi. Status lanjutan ditambahkan bersama alurnya.
+Pada V1 cakupannya membuat laporan, daftar/pencarian, dan detail. Saat itu belum ada
+update/delete, upload foto, registrasi/login, relasi pelapor, klaim, atau penyerahan.
+Registrasi/login, CSRF, dan relasi pelapor kemudian ditambahkan oleh V2; batas lain
+masih berlaku. API tetap untuk pengembangan lokal dan server terikat ke 127.0.0.1.
+Status lanjutan ditambahkan bersama alurnya.
 Lokasi sekarang berupa teks kampus/area/detail; daftar lokasi UPNVJ terkontrol
 belum diterapkan. Jangan memakai data identitas asli untuk percobaan.
 
@@ -18,7 +25,9 @@ belum diterapkan. Jangan memakai data identitas asli untuk percobaan.
 
 Relasi awal adalah satu laporan ke satu deskripsi barang. Dua laporan yang diduga
 cocok tetap memiliki deskripsi masing-masing. Kepemilikan belum ditentukan otomatis.
-Tabel pengguna, klaim, dan penyerahan ditambahkan pada migrasi berikutnya.
+Tabel pengguna dan relasi pelapor sudah ditambahkan oleh V2. Lampiran, saran kecocokan,
+klaim, bukti klaim, dan penyerahan masih berupa rancangan ERD target dan akan ditambahkan
+bertahap melalui migrasi berikutnya.
 
 Subclass barang disimpan menggunakan SINGLE_TABLE: kolom kategori menentukan apakah
 baris dimuat JPA sebagai BarangElektronik, KartuIdentitas, atau BarangUmum.
@@ -73,7 +82,9 @@ Base URL lokal: http://127.0.0.1:8081 (PORT di .env).
 | GET | /api/laporan | HTTP 200, daftar paginasi |
 | GET | /api/laporan/{id} | HTTP 200, detail publik; 404 jika tidak ada |
 
-POST menggunakan Content-Type: application/json dan body dari laporan-contoh.json.
+Pada versi terkini, POST memerlukan session login dan header CSRF seperti dijelaskan di
+`tahap-2-autentikasi.md`. Request menggunakan Content-Type: application/json dan body
+dari laporan-contoh.json.
 Jenis: KEHILANGAN atau PENEMUAN. Kategori: ELEKTRONIK, KARTU_IDENTITAS, UMUM.
 Waktu kejadian memakai waktu lokal Jakarta format yyyy-MM-ddTHH:mm:ss dan tidak
 boleh di masa depan. Field wajib tidak boleh kosong; panjang field dibatasi.
@@ -87,6 +98,7 @@ HTTP 400 dengan ProblemDetail. Entity tidak dikirim langsung sebagai JSON.
 
 ## Langkah berikutnya
 
-Tambahkan akun dan hak akses, kaitkan pelapor ke laporan, lengkapi perubahan laporan
-sesuai hak pemilik, lalu penitipan/klaim/penyerahan beserta transisi statusnya.
-Setelah API diuji, hubungkan React. Rancangan perlu tetap dicocokkan dengan rubrik dosen.
+Akun, session, hak akses pembuatan, dan pelapor laporan sudah diselesaikan di V2.
+Berikutnya lengkapi perubahan laporan sesuai hak pemilik dan lampiran, kemudian saran
+kecocokan, penitipan/klaim/penyerahan beserta transisi statusnya. Setelah API diuji,
+hubungkan React. Rancangan perlu tetap dicocokkan dengan rubrik dosen.

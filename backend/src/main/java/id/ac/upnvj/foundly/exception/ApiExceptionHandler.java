@@ -6,9 +6,22 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.security.core.AuthenticationException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail loginGagal(AuthenticationException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Email atau password salah.");
+    }
+    @ExceptionHandler(EmailSudahTerdaftarException.class)
+    public ProblemDetail emailTerdaftar(EmailSudahTerdaftarException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    }
+    @ExceptionHandler(AkunTidakAktifException.class)
+    public ProblemDetail akunTidakAktif(AkunTidakAktifException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage());
+    }
     @ExceptionHandler(LaporanTidakDitemukanException.class)
     public ProblemDetail tidakDitemukan(LaporanTidakDitemukanException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());

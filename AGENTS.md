@@ -20,6 +20,7 @@ Instruksi konteks awal pengguna: pekerjaan berada dalam proyek yang lebih luas b
 - Pengguna menyetujui MySQL lokal lewat Docker dan mengizinkan menjalankan Docker serta membangun backend/database bertahap. Gunakan container/volume khusus Foundly; proyek Docker lain tidak diubah.
 - Akses database yang direncanakan: Spring Data JPA.
 - API dapat diuji dengan Postman sebelum dihubungkan ke frontend.
+- Autentikasi menggunakan Spring Security session cookie, BCrypt, CSRF protection, dan CORS ber-credential untuk React. Implementasi V2 beserta panduan uji ada di `docs/tahap-2-autentikasi.md`.
 - Pengguna meminta menyimpan konteks ini dahulu; jangan menganggap permintaan menyimpan sebagai perintah membangun seluruh aplikasi sekarang.
 
 ## Lokasi dan radius
@@ -39,7 +40,7 @@ Instruksi konteks awal pengguna: pekerjaan berada dalam proyek yang lebih luas b
 5. Petugas memeriksa bukti dan memutuskan klaim.
 6. Penyerahan barang dicatat, lalu status dan riwayat diperbarui.
 
-Rancangan awal peran: pengguna/pelapor dan petugas/admin. Rincian autentikasi, formulir, skema database, serta aturan status belum difinalisasi.
+Peran target: `PENGGUNA` dan `PETUGAS`; petugas menangani fungsi administrasi versi awal. ERD target, relasi, privasi, dan aturan status difinalisasi di `docs/erd.md`. Mekanisme autentikasi sudah diputuskan dan diterapkan. Penyimpanan file fisik, daftar lokasi terkontrol, serta unit penitipan belum diputuskan.
 
 Pisahkan informasi publik dari ciri/bukti privat untuk verifikasi. Jangan menampilkan bukti sensitif pada API daftar laporan publik. Saran kecocokan atau kecocokan satu ciri tidak boleh otomatis menetapkan kepemilikan.
 
@@ -87,7 +88,7 @@ Setiap konsep perlu dapat dipetakan ke file, method, dan skenario demonstrasi. H
 
 ## Langkah berikutnya yang belum dikerjakan
 
-Tahap pembuatan/pembacaan laporan dan MySQL sudah terverifikasi. Berikutnya akun/otorisasi serta relasi pelapor, perubahan laporan sesuai hak pemilik, penitipan, klaim, dan penyerahan. Frontend dan deployment belum dibuat. Rancangan tabel tahap awal dan batas implementasi ada di `docs/tahap-1.md`.
+V1 laporan dan V2 akun/session/kepemilikan laporan sudah diimplementasikan serta terverifikasi. Berikutnya V3 untuk penyempurnaan laporan dan lampiran, V4 untuk saran kecocokan, lalu klaim/bukti dan penyerahan. Endpoint update laporan, fungsi petugas, frontend, dan deployment belum dibuat. Dokumentasi implementasi ada di `docs/tahap-1.md` dan `docs/tahap-2-autentikasi.md`.
 
 ## Cara kerja yang diminta pengguna
 
@@ -111,9 +112,50 @@ Pengguna menilai rancangan sudah cukup bagus dan meminta mulai fondasi Spring Bo
 - `Barang` menyediakan kontrak `getPanduanBuktiKlaim()` yang di-override subclass. Nama ini memperbarui contoh awal `BarangTemuan`; belum ada implementasi domain.
 - `Laporan` memiliki jenis kehilangan/penemuan dan merujuk deskripsi barang milik laporan tersebut. Deskripsi dari dua laporan tidak otomatis dianggap benda fisik yang sama.
 - Status dienkapsulasi melalui method yang memvalidasi aturan; service mengatur proses lintas objek. Strategi pencocokan berbasis interface ditambahkan saat fitur kecocokan dikerjakan.
-- Diagram class konseptual sudah dijelaskan di percakapan; file diagram dan ERD belum dibuat.
+- ERD target sudah dibuat di `docs/erd.md`. Diagram class konseptual masih berada di percakapan dan belum memiliki file final tersendiri.
 
 ## Riwayat perubahan
+
+### 6 November 2026 — V2 autentikasi session dan kepemilikan laporan
+
+- Pengguna menyetujui konsep peran/interaksi dan meminta melanjutkan database serta backend. Implementasi dibatasi pada tahap V2 agar perubahan dapat dipahami dan diuji sebelum fitur bisnis berikutnya.
+- Menambahkan Spring Security dan dukungan tes keamanan. Autentikasi memakai session server, cookie `FOUNDLY_SESSION` HttpOnly/SameSite=Lax, timeout 30 menit, session ID rotation ketika login, CSRF aktif, dan CORS ber-credential untuk origin React yang dikonfigurasi. Cookie `Secure` dapat diaktifkan lewat environment saat HTTPS.
+- Menambahkan entity/repository/service akun: `Pengguna`, `PeranPengguna`, `PenggunaRepository`, `PenggunaService`, principal dan `UserDetailsService`. Registrasi publik selalu membuat `PENGGUNA`, email dinormalisasi/unique, dan password di-hash BCrypt. Password/hash tidak masuk DTO response.
+- Menambahkan endpoint `GET /api/auth/csrf`, `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, dan `POST /api/auth/logout`. Response 401/403 berbentuk JSON problem dan pesan login salah dibuat generik. Registrasi mengembalikan 201 tanpa header `Location` palsu karena belum ada endpoint publik untuk membaca pengguna berdasarkan ID.
+- Menambahkan migrasi Flyway V2 untuk tabel `pengguna`, kepemilikan laporan melalui `pelapor_id`, timestamp, optimistic `version`, index, dan foreign key `RESTRICT`. Laporan V1 lama tidak dihapus; migrasi membuat akun `legacy@foundly.local` nonaktif hanya jika diperlukan lalu menghubungkan data lama kepadanya.
+- Pembuatan `POST /api/laporan` sekarang wajib login dan mengambil ID pelapor dari session, bukan body request. GET daftar/detail tetap publik dan tidak membocorkan identitas pelapor maupun ciri privat.
+- Memperluas tes integrasi menjadi 22 skenario: registrasi, normalisasi/duplikasi email, BCrypt/tidak bocornya hash, CSRF, login/session/logout, kredensial salah, otorisasi pembuatan laporan, kepemilikan, seluruh subclass barang, privasi, pencarian, validasi, dan 404. Hasil clean build: 22 lulus, 0 failure, 0 error, 0 skipped.
+- Menerapkan V2 pada volume MySQL pengembangan yang sebelumnya berada di V1. Flyway berhasil mencapai versi 2; akun legacy nonaktif terbentuk; laporan contoh ID 1 berjenis `PENEMUAN` tetap ada dan terhubung ke akun tersebut. Backend Java 21 berhasil startup dan `GET /api/health` menghasilkan HTTP 200.
+- Pengguna mengonfirmasi bantuan komunitas sebagai bagian arah produk. ERD target diperluas dari tujuh menjadi delapan tabel dengan `saran_kecocokan`; saran menghubungkan laporan kehilangan/temuan dan bersumber dari pengguna atau sistem, tetapi bukan klaim atau bukti kepemilikan. Tabel/API saran belum diimplementasikan dan direncanakan pada V4.
+- Menambahkan `docs/tahap-2-autentikasi.md`, memperbarui ERD, konsep interaksi, README, dokumentasi V1, contoh environment, dan catatan aktif ini. Langkah berikutnya adalah V3 penyempurnaan laporan/lampiran, bukan langsung mengerjakan seluruh fitur sekaligus.
+- Docker Desktop dan MySQL hanya dinyalakan selama verifikasi. Setelah dokumentasi dan pemeriksaan akhir selesai, keduanya dihentikan kembali agar tidak membebani laptop.
+- Atas permintaan pengguna, seluruh perubahan V2 dipaketkan dan didorong ke `origin/main` pada repository `adrianfirmansyah24/PROJEKUASOOPSMT3`. Identitas commit repository-local menggunakan `adrianfirmansyah24` dan email no-reply GitHub; `.env` lokal tetap diabaikan dan tidak masuk commit.
+
+### 6 November 2026 — Keputusan session cookie dan konsep interaksi komunitas
+
+- Pengguna menyetujui autentikasi session cookie dan meminta penjelasan ulang mengenai peran petugas, pengguna, interaksi antarpengguna, dan anonimitas sebelum implementasi.
+- Menambahkan `docs/konsep-peran-dan-interaksi.md`. Perubahan sesi ini hanya dokumentasi; tidak mengubah Java, migrasi database, Docker, atau data.
+- Menetapkan konsep yang direkomendasikan: Foundly adalah pencarian berbasis komunitas dengan verifikasi dimediasi petugas. Satu role `PENGGUNA` dapat menjadi pelapor kehilangan, penemu, pemberi saran, atau pengaju klaim sesuai kasus.
+- Menetapkan model privasi yang direkomendasikan: identitas pelapor anonim bagi pengguna lain, tetapi akun diketahui sistem dan dapat diakses petugas sesuai kebutuhan. Membaca laporan publik dapat tanpa login; membuat laporan, memberi saran, dan mengajukan klaim wajib login.
+- Menetapkan petugas sebagai akun resmi unit kampus yang menerima barang, melihat data privat, memeriksa klaim, dan mencatat penyerahan. Petugas juga menangani administrasi operasional versi awal; belum ada role admin terpisah.
+- Merekomendasikan interaksi tidak langsung melalui laporan dan `saran kecocokan`, tanpa chat atau pertukaran kontak pada MVP. Saran tidak sama dengan klaim dan tidak membuktikan kepemilikan.
+- Saat sesi ini berakhir, `saran kecocokan` masih proposal. Pengguna kemudian mengonfirmasinya dan ERD direvisi dengan tabel kedelapan `saran_kecocokan`; tabel/API tersebut tetap belum diimplementasikan.
+- Keputusan autentikasi: Spring Security session cookie, password BCrypt, cookie HttpOnly/SameSite, CSRF aktif, dan CORS credential untuk React. Penyimpanan session awal menggunakan mekanisme server Spring; sesi persisten lintas restart bukan kebutuhan MVP.
+- README diperbarui agar menunjuk dokumentasi konsep ini. Verifikasi dokumentasi menggunakan `git diff --check`; Docker dan backend tetap mati.
+
+### 6 November 2026 — Finalisasi ERD target
+
+- Pengguna meminta memfinalisasi ERD sebelum implementasi berikutnya dan mewajibkan setiap perubahan dicatat dalam Markdown.
+- Menambahkan `docs/erd.md` sebagai sumber rancangan database target. Tidak mengubah kode Java, migrasi V1, database lokal, container, atau data.
+- Menetapkan tujuh tabel inti awal: `pengguna`, `barang`, `laporan`, `lampiran_laporan`, `klaim`, `bukti_klaim`, dan `penyerahan`, lengkap dengan key, cardinality, kamus data, aturan privasi, index, optimistic locking, dan kebijakan tanpa hard delete untuk data transaksi. Rancangan kemudian menjadi delapan tabel setelah `saran_kecocokan` dikonfirmasi.
+- Menetapkan bahwa klaim wajib merujuk laporan penemuan dan opsional merujuk laporan kehilangan milik pengaju. Laporan kehilangan tidak menjadi syarat mengajukan klaim.
+- Menetapkan alur status laporan kehilangan/penemuan dan klaim, termasuk pembatalan klaim disetujui sebelum penyerahan serta perubahan atomik saat penyerahan dicatat.
+- Menetapkan dua peran akun: `PENGGUNA` dan `PETUGAS`; petugas menjalankan fungsi administrasi versi awal. Pendaftaran publik tidak dapat menentukan peran petugas.
+- Menetapkan lampiran/bukti sebagai metadata file di MySQL; file fisik tidak disimpan sebagai BLOB. Penyedia storage diputuskan saat implementasi upload.
+- Menetapkan rencana migrasi awal tanpa mengubah V1. Urutan terbaru setelah fitur saran dikonfirmasi adalah V2 pengguna/kepemilikan (selesai), V3 penyempurnaan laporan/lampiran, V4 saran kecocokan, V5 klaim/bukti, dan V6 penyerahan.
+- Memperbarui README dan `docs/tahap-1.md` agar membedakan implementasi V1 dari ERD target.
+- Hal yang tetap terbuka: session/token untuk login, storage file, daftar lokasi resmi, unit penitipan, serta pencocokan dengan rubrik lengkap dosen.
+- Verifikasi dokumentasi dilakukan tanpa menyalakan Docker atau backend: memeriksa referensi file, sintaks dasar Mermaid ERD, dan `git diff --check`.
 
 ### 6 November 2026 — Persiapan dan push kode ke GitHub
 

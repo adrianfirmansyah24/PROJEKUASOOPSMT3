@@ -6,10 +6,17 @@ database MySQL 8.4.13 di Docker, dan rencana frontend React + CSS.
 
 ## Tahap saat ini
 
-Backend menyediakan health, pembuatan laporan, daftar/pencarian, serta detail publik.
-Data disimpan melalui JPA dan skema dikelola Flyway. Login, klaim, penyerahan,
-update/delete laporan, foto, dan frontend belum tersedia. Ini tahap pengembangan lokal.
-Rancangan tabel, alur kode, batas tahap, dan pemetaan PBO ada di [docs/tahap-1.md](docs/tahap-1.md).
+Backend menyediakan health, registrasi, login/logout berbasis session cookie, informasi
+akun aktif, serta pembuatan dan pembacaan laporan. Setiap laporan memiliki pelapor,
+tetapi identitasnya tidak ditampilkan melalui response publik. Data disimpan melalui
+JPA dan skema dikelola Flyway. Klaim, penyerahan, saran kecocokan, update/delete
+laporan, foto, dan frontend belum tersedia. Ini tahap pengembangan lokal.
+Rancangan database target ada di [docs/erd.md](docs/erd.md). Implementasi V1, alur kode,
+batas tahap, dan pemetaan PBO ada di [docs/tahap-1.md](docs/tahap-1.md).
+Implementasi V2 dan cara memakai session/CSRF ada di
+[docs/tahap-2-autentikasi.md](docs/tahap-2-autentikasi.md).
+Konsep pengguna, petugas, anonimitas, dan bantuan komunitas dibahas di
+[docs/konsep-peran-dan-interaksi.md](docs/konsep-peran-dan-interaksi.md).
 Riwayat pekerjaan ada di [AGENTS.md](AGENTS.md).
 
 ## 1. Jalankan database
@@ -70,20 +77,26 @@ message Backend Foundly berjalan. Endpoint ini memeriksa HTTP server saja.
 Backend memeriksa koneksi, migrasi, dan kesesuaian skema database saat startup.
 Hentikan backend dengan Ctrl+C. Database berjalan terpisah di Docker.
 
-## 3. Coba laporan
+## 3. Coba akun dan laporan
 
-Di Postman: POST http://127.0.0.1:8081/api/laporan, Body → raw → JSON,
-lalu gunakan [contoh body](docs/laporan-contoh.json). Atau dari root proyek:
+Request `GET` laporan dapat dibaca tanpa login. Untuk registrasi, login, logout, atau
+membuat laporan, ambil token melalui `GET /api/auth/csrf`, pertahankan cookie, dan kirim
+nilai token pada header `X-CSRF-TOKEN`. Postman biasanya menyimpan cookie secara
+otomatis. Urutan request dan contoh body akun dijelaskan lengkap di
+[dokumentasi tahap 2](docs/tahap-2-autentikasi.md).
+
+Setelah login, kirim `POST http://127.0.0.1:8081/api/laporan`, Body → raw → JSON,
+header CSRF dari sesi yang sama, lalu gunakan [contoh body](docs/laporan-contoh.json).
+Daftar publik dapat dicoba langsung dari root proyek:
 
 ```sh
-curl -i -H 'Content-Type: application/json' --data-binary @docs/laporan-contoh.json http://127.0.0.1:8081/api/laporan
 curl 'http://127.0.0.1:8081/api/laporan?jenis=PENEMUAN&kataKunci=headphone&page=0&size=20'
 ```
 
-POST menghasilkan HTTP 201. Gunakan id pada response untuk GET /api/laporan/{id}.
-Ciri privat tidak dikirim dalam response publik. Jangan memasukkan bukti sensitif
-ke nama atau deskripsi publik. Semua endpoint masih untuk pengembangan lokal;
-login dan pembatasan hak akses ditambahkan pada tahap berikutnya.
+POST laporan menghasilkan HTTP 201. Gunakan id pada response untuk
+`GET /api/laporan/{id}`. Ciri privat dan identitas pelapor tidak dikirim dalam response
+publik. Jangan memasukkan bukti sensitif ke nama atau deskripsi publik. Semua endpoint
+masih untuk pengembangan lokal.
 
 ## Pengujian dan build
 
@@ -94,10 +107,11 @@ Docker harus aktif. Dari backend:
 ```
 
 Testcontainers membuat MySQL sementara pada port acak, terpisah dari volume Foundly,
-lalu menghapusnya setelah tes. Pengujian mencakup migrasi, penyimpanan/pembacaan,
+lalu menghapusnya setelah tes. Saat ini terdapat 22 tes yang mencakup migrasi,
+registrasi dan BCrypt, CSRF, session login/logout, otorisasi, kepemilikan laporan,
 polymorphism setelah dimuat dari MySQL, privasi response/pencarian, filter/paginasi,
-input tidak valid, dan HTTP 404. Jangan mengatur tes agar menghapus database pengembangan.
-Build menghasilkan backend/target/foundly-0.0.1-SNAPSHOT.jar.
+input tidak valid, dan HTTP 404. Jangan mengatur tes agar menghapus database
+pengembangan. Build menghasilkan backend/target/foundly-0.0.1-SNAPSHOT.jar.
 
 Jika Testcontainers di macOS tidak menemukan Docker Desktop:
 
@@ -117,11 +131,13 @@ backend/
   src/main/java/id/ac/upnvj/foundly/
     FoundlyApplication.java   Titik masuk
     controller/               Request HTTP
+    config/                   Spring Security, session, CSRF, dan CORS
     service/                  Proses aplikasi dan transaksi
     model/                    Object, pewarisan, aturan domain
     repository/               Akses database
     dto/                      Data request/response
     exception/                Kesalahan dan response API
+    security/                 Principal dan penghubung akun ke Spring Security
   src/main/resources/
     application.properties    Konfigurasi
     db/migration/             Riwayat skema SQL

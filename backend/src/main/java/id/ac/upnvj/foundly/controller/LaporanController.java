@@ -3,10 +3,12 @@ package id.ac.upnvj.foundly.controller;
 import id.ac.upnvj.foundly.dto.*;
 import id.ac.upnvj.foundly.model.JenisLaporan;
 import id.ac.upnvj.foundly.service.LaporanService;
+import id.ac.upnvj.foundly.security.FoundlyUserPrincipal;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import java.net.URI;
 
 @RestController
@@ -16,8 +18,9 @@ public class LaporanController {
     public LaporanController(LaporanService service) { this.service = service; }
 
     @PostMapping
-    public ResponseEntity<LaporanResponse> buat(@Valid @RequestBody BuatLaporanRequest request) {
-        LaporanResponse response = service.buat(request);
+    public ResponseEntity<LaporanResponse> buat(@Valid @RequestBody BuatLaporanRequest request,
+                                                @AuthenticationPrincipal FoundlyUserPrincipal principal) {
+        LaporanResponse response = service.buat(request, principal.id());
         return ResponseEntity.created(URI.create("/api/laporan/" + response.id())).body(response);
     }
     @GetMapping("/{id}")
