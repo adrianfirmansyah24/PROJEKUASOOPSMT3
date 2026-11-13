@@ -1,6 +1,6 @@
 # proyekOOPSMT3 — Foundly
 
-Catatan keputusan proyek, diperbarui 6 November 2026. Dokumen ini menjadi konteks untuk melanjutkan pekerjaan di Codex. Fondasi backend serta tahap awal laporan dan konfigurasi MySQL Docker sudah dibuat. Hasil verifikasi terbaru tercatat pada riwayat perubahan.
+Catatan keputusan proyek, diperbarui 13 November 2026. Dokumen ini menjadi konteks untuk melanjutkan pekerjaan di Codex. Fondasi backend serta tahap awal laporan dan konfigurasi MySQL Docker sudah dibuat. Hasil verifikasi terbaru tercatat pada riwayat perubahan.
 
 ## Konteks dan tujuan
 
@@ -115,6 +115,16 @@ Pengguna menilai rancangan sudah cukup bagus dan meminta mulai fondasi Spring Bo
 - ERD target sudah dibuat di `docs/erd.md`. Diagram class konseptual masih berada di percakapan dan belum memiliki file final tersendiri.
 
 ## Riwayat perubahan
+
+### 13 November 2026 — Otomatisasi test backend di GitHub Actions
+
+- Pengguna menanyakan indikator test berwarna kuning pada GitHub dan meminta test langsung dijalankan otomatis.
+- Pemeriksaan GitHub pada commit `ea912bf` menemukan 0 workflow run, 0 check run, dan 0 commit status. Test 22/22 sebelumnya hanya dijalankan lokal, sehingga GitHub belum mempunyai CI yang dapat menghasilkan status hijau atau merah.
+- Menambahkan `.github/workflows/backend-test.yml` dengan trigger setiap push/PR ke `main`, serta `workflow_dispatch` untuk eksekusi manual. Semua commit memperoleh status test yang jelas, termasuk perubahan dokumentasi.
+- Workflow menggunakan runner Ubuntu, Eclipse Temurin Java 21, cache Maven, dan menjalankan `./mvnw --batch-mode --no-transfer-progress clean verify` dari folder `backend`.
+- Tes integrasi tetap menggunakan MySQL 8.4.13 melalui Testcontainers dan Docker bawaan runner GitHub; tidak memakai `.env` atau database pengembangan lokal.
+- Izin workflow dibatasi ke `contents: read`, timeout 20 menit, dan run lama pada ref yang sama dibatalkan bila ada run baru.
+- Perubahan ini harus di-commit dan di-push ke `main`; hasil GitHub Actions kemudian dipantau sampai selesai sebelum pekerjaan dinyatakan berhasil.
 
 ### 6 November 2026 — V2 autentikasi session dan kepemilikan laporan
 

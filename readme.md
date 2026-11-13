@@ -113,6 +113,10 @@ polymorphism setelah dimuat dari MySQL, privasi response/pencarian, filter/pagin
 input tidak valid, dan HTTP 404. Jangan mengatur tes agar menghapus database
 pengembangan. Build menghasilkan backend/target/foundly-0.0.1-SNAPSHOT.jar.
 
+Setiap push atau pull request ke `main` otomatis menjalankan perintah yang sama melalui
+workflow GitHub Actions `Backend Tests`. Workflow memakai Java 21 dan MySQL
+Testcontainers terpisah; `.env` serta database lokal tidak digunakan.
+
 Jika Testcontainers di macOS tidak menemukan Docker Desktop:
 
 ```sh
