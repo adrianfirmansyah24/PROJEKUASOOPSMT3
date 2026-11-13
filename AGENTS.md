@@ -124,7 +124,7 @@ Pengguna menilai rancangan sudah cukup bagus dan meminta mulai fondasi Spring Bo
 - Workflow menggunakan runner Ubuntu, Eclipse Temurin Java 21, cache Maven, dan menjalankan `./mvnw --batch-mode --no-transfer-progress clean verify` dari folder `backend`.
 - Tes integrasi tetap menggunakan MySQL 8.4.13 melalui Testcontainers dan Docker bawaan runner GitHub; tidak memakai `.env` atau database pengembangan lokal.
 - Izin workflow dibatasi ke `contents: read`, timeout 20 menit, dan run lama pada ref yang sama dibatalkan bila ada run baru.
-- Perubahan ini harus di-commit dan di-push ke `main`; hasil GitHub Actions kemudian dipantau sampai selesai sebelum pekerjaan dinyatakan berhasil.
+- Workflow di-commit sebagai `6fd87ec` dan dipush ke `main`. GitHub Actions run pertama (`Backend Tests` #1, run ID `43360248989`) selesai dengan status `success`; checkout, setup Java 21, dan `clean verify` seluruhnya berhasil. Indikator commit sekarang memiliki check otomatis yang dapat menjadi hijau atau merah berdasarkan hasil nyata.
 
 ### 6 November 2026 — V2 autentikasi session dan kepemilikan laporan
 
